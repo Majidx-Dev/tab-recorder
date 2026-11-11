@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tab Recorder</title>
+<style>
+  :root {
+    --frame: #fbfaf7;
+    --frame-edge: #e4dfd5;
+    --image: #26241f;
+    --image-ink: #f2efe8;
+    --image-muted: #b3ada1;
+    --print: #f2efe8;
+    --print-ink: #26241f;
+    --print-art: #8d877c;
+    --print-art-hi: #4a4740;
+    --ink: #26241f;
+    --muted: #6b665d;
+    --red: #c8431f;
+    --red-hi: #b13a1a;
+    --warn: #8a5300;
+    --error: #b42318;
+    --focus: #3b7ea1;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      /* The black-frame edition. */
+      --frame: #141311;
+      --frame-edge: #2c2a26;
+      --image: #2b2925;
+      --image-ink: #f2efe8;
+      --image-muted: #a9a397;
+      --print: #3a3732;
+      --print-ink: #f2efe8;
+      --print-art: #6f6a61;
+      --print-art-hi: #c9c3b7;
+      --ink: #ece8df;
+      --muted: #a29c90;
+      --red: #c8431f;
+      --red-hi: #b13a1a;
+      --warn: #e0a24a;
+      --error: #f08a7a;
+      --focus: #7cb7d6;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { background: var(--frame); }
+  body {
+    margin: 0; width: 300px; padding: 12px 12px 0;
+    background: var(--frame); color: var(--ink);
+    font: 500 12px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--red); color: #fff; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .hidden { display: none !important; }
+  svg { display: block; flex: none; }
+
+  /* The image area: where the decision is made. */
+  .image {
+    background: var(--image); color: var(--image-ink);
+    padding: 12px; display: grid; gap: 12px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25);
+  }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { padding: 0; margin-bottom: 8px; font-weight: 600; color: var(--image-muted); }
+  .prints { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .print {
+    position: relative; background: var(--print); color: var(--print-ink);
+    padding: 5px 5px 7px; cursor: pointer; text-align: center; font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+    transition: box-shadow .18s ease-out, transform .18s ease-out;
+  }
+  .print:hover { transform: translateY(-1px); box-shadow: 0 3px 6px rgba(0, 0, 0, .4); }
+  .print input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .print svg { width: 100%; height: auto; margin-bottom: 5px; }
+  .print .art { fill: var(--print-art); }
+  .print .hi { fill: var(--print-art-hi); }
+  .print:has(input:checked) { box-shadow: 0 0 0 2px var(--red), 0 1px 2px rgba(0, 0, 0, .35); }
+  .print:has(input:checked) .hi { fill: var(--red); }
+  .print:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+  .actions { display: grid; gap: 6px; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%; padding: 9px 10px; border-radius: 2px;
+    transition: background-color .15s ease-out, border-color .15s ease-out;
+  }
+  .primary { background: var(--red); color: #fff; border: 1px solid var(--red); }
+  .primary:hover { background: var(--red-hi); border-color: var(--red-hi); }
+  .secondary { background: transparent; color: var(--image-ink); border: 1px solid rgba(242, 239, 232, .35); }
+  .secondary:hover { border-color: rgba(242, 239, 232, .7); }
+  .live { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  button:disabled { opacity: .55; cursor: default; }
+  .ic-play, body[data-state="paused"] .ic-pause { display: none; }
+  body[data-state="paused"] .ic-play { display: block; }
+
+  /* The bottom margin: the caption. */
+  .caption { padding: 14px 2px 0; }
+  .line { display: flex; align-items: baseline; gap: 10px; }
+  #status { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+  #timer { margin-left: auto; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  #sub { margin-top: 2px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rule { height: 2px; margin: 10px 0 0; background: var(--frame-edge); transform-origin: left; }
+  body[data-state="recording"] .rule { background: var(--red); animation: develop .6s cubic-bezier(.16, 1, .3, 1); }
+  body[data-state="paused"] .rule { height: 0; background: none; border-top: 2px dashed var(--muted); }
+  @keyframes develop { from { transform: scaleX(0); } }
+  .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); align-self: center; display: none; }
+  body[data-state="recording"] .rec-dot { display: block; animation: breathe 1.6s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .35; } }
+  #note { margin-top: 8px; color: var(--warn); }
+  #error { margin-top: 8px; color: var(--error); }
+  #note:empty, #error:empty { display: none; }
+
+  /* File options open in place, inside the margin. */
+  details { margin-top: 12px; border-top: 1px solid var(--frame-edge); }
+  summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    padding: 10px 2px 12px; font-weight: 600;
+  }
+  summary::-webkit-details-marker { display: none; }
+  #fileSummary { margin-left: auto; color: var(--muted); font-weight: 500; }
+  summary svg { overflow: visible; transform-origin: 50% 50%; transition: transform .2s ease-out; color: var(--muted); }
+  details[open] summary svg { transform: rotate(90deg); }
+  .fields { display: grid; gap: 10px; padding: 0 2px 14px; }
+  .field { display: grid; gap: 4px; color: var(--muted); font-weight: 600; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--frame-edge); border-radius: 2px; }
+  .seg label { position: relative; text-align: center; padding: 6px 0; cursor: pointer; color: var(--ink); font-weight: 600; }
+  .seg label + label { border-left: 1px solid var(--frame-edge); }
+  .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .seg label:has(input:checked) { background: var(--ink); color: var(--frame); }
+  .seg label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 1px; }
+  select, input[type=text] {
+    font: inherit; font-weight: 500; color: var(--ink); background: var(--frame);
+    border: 1px solid var(--frame-edge); border-radius: 2px; padding: 6px 8px; width: 100%;
+  }
+  input[type=text]::placeholder { color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body data-state="idle">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-rec" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="currentColor"/></symbol>
+    <symbol id="i-audio" viewBox="0 0 16 16"><path d="M6 12.5V3.5l7-1.5v9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4.5" cy="12.5" r="1.9" fill="currentColor"/><circle cx="11.5" cy="11" r="1.9" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 16 16"><rect x="4" y="3" width="3" height="10" rx=".5" fill="currentColor"/><rect x="9" y="3" width="3" height="10" rx=".5" fill="currentColor"/></symbol>
+    <symbol id="i-play" viewBox="0 0 16 16"><path d="M5 3.2v9.6a.5.5 0 0 0 .77.42l7.2-4.8a.5.5 0 0 0 0-.84l-7.2-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1" fill="currentColor"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 16 16"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <div class="image">
+    <fieldset id="sourceRow">
+      <legend>What to record</legend>
+      <div class="prints">
+        <label class="print">
+          <input type="radio" name="source" value="video" checked>
+          <!-- Only the video: the player alone. -->
+          <svg viewBox="0 0 64 40" aria-hidden="true"><rect class="art" x="0" y="0" width="64" height="40"/><rect class="hi" x="14" y="9" width="36" height="22"/></svg>
+          Only the video
+        </label>
+        <label class="print">
+          <input type="radio" name="source" value="tab">
+          <!-- Whole tab: the page with the player in it. -->
+          <svg viewBox="0 0 64 40" aria-hidden="true"><rect class="hi" x="0" y="0" width="64" height="40"/><rect class="art" x="5" y="6" width="34" height="20"/><rect class="art" x="43" y="6" width="16" height="9"/><rect class="art" x="43" y="18" width="16" height="9"/><rect class="art" x="5" y="30" width="34" height="4"/></svg>
+          Whole tab
+        </label>
+        <label class="print">
+          <input type="radio" name="source" value="screen">
+          <!-- Whole screen: browser tabs, page and the taskbar. -->
+          <svg viewBox="0 0 64 40" aria-hidden="true"><rect class="hi" x="0" y="0" width="64" height="40"/><rect class="art" x="3" y="3" width="58" height="5"/><rect class="art" x="3" y="10" width="58" height="22"/><rect class="art" x="3" y="34" width="58" height="3"/></svg>
+          Whole screen
+        </label>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button id="startAV" class="primary"><svg width="14" height="14"><use href="#i-rec"/></svg>Record video + audio</button>
+      <button id="startA" class="secondary"><svg width="14" height="14"><use href="#i-audio"/></svg>Record audio only</button>
+    </div>
+
+    <div class="live">
+      <button id="pause" class="secondary hidden"><svg class="ic-pause" width="14" height="14"><use href="#i-pause"/></svg><svg class="ic-play" width="14" height="14"><use href="#i-play"/></svg><span>Pause</span></button>
+      <button id="stop" class="primary hidden"><svg width="14" height="14"><use href="#i-stop"/></svg>Stop &amp; save</button>
+    </div>
+  </div>
+
+  <div class="caption" aria-live="polite">
+    <div class="line"><span class="rec-dot"></span><span id="status">Ready</span><span id="timer"></span></div>
+    <div id="sub"></div>
+    <div class="rule"></div>
+    <div id="note"></div>
+    <div id="error"></div>
+  </div>
+
+  <details id="moreRow">
+    <summary>File options<span id="fileSummary"></span><svg width="14" height="14"><use href="#i-chev"/></svg></summary>
+    <div class="fields">
+      <div class="field">Format
+        <div class="seg">
+          <label><input type="radio" name="format" value="webm" checked>WebM</label>
+          <label><input type="radio" name="format" value="mp4">MP4</label>
+        </div>
+      </div>
+      <label class="field">Quality
+        <select id="quality">
+          <option value="low">Low (small file)</option>
+          <option value="medium">Medium</option>
+          <option value="high" selected>High</option>
+        </select>
+      </label>
+      <label class="field">Save in folder (inside Downloads)
+        <input type="text" id="folder" placeholder="e.g. Recordings — empty: Downloads">
+      </label>
+    </div>
+  </details>
+  <script src="popup.js"></script>
+</body>
+</html>

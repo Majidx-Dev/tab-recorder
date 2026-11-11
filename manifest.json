@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Recorder",
+  "version": "1.0",
+  "description": "Record whatever audio/video is playing in the current tab.",
+  "permissions": ["tabCapture", "offscreen", "downloads", "storage", "activeTab", "scripting", "unlimitedStorage", "desktopCapture"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "Tab Recorder" }
+}

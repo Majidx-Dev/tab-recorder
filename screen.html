@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tab Recorder screen</title>
+<style>
+  :root { --bg: #fff; --fg: #202124; --muted: #5f6368; --error: #d93025; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #202124; --fg: #e8eaed; --muted: #9aa0a6; --error: #f28b82; }
+  }
+  body { font: 14px system-ui, sans-serif; background: var(--bg); color: var(--fg); margin: 0; padding: 16px; }
+  h1 { font-size: 15px; margin: 0 0 8px; }
+  p { color: var(--muted); line-height: 1.45; margin: 0; }
+  p.error { color: var(--error); }
+  button {
+    margin-top: 14px; font: 600 14px/1 system-ui, sans-serif; padding: 11px 16px; border-radius: 2px;
+    background: #c8431f; color: #fff; border: 1px solid #c8431f; cursor: pointer;
+  }
+  button:hover { background: #b13a1a; border-color: #b13a1a; }
+  button:disabled { opacity: .55; cursor: default; }
+  button:focus-visible { outline: 2px solid #3b7ea1; outline-offset: 2px; }
+</style>
+</head>
+<body>
+  <h1>Tab Recorder — whole screen</h1>
+  <p id="status">Getting ready…</p>
+  <button id="start" disabled>Start recording</button>
+  <script src="recording-file.js"></script>
+  <script src="screen.js"></script>
+</body>
+</html>
